@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم الأدمن | المحمدي</title>
+<style>
+  :root{
+    --bg:#0a0806;
+    --bg-2:#141009;
+    --panel:#1b1610;
+    --panel-2:#231c13;
+    --border:#3a2f1c;
+    --gold:#c9a24a;
+    --gold-light:#e9cd80;
+    --gold-deep:#8a6a24;
+    --text:#f2ead9;
+    --text-dim:#b9ab8c;
+    --danger:#c85c4a;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"Segoe UI","Tahoma",Geneva,Arial,sans-serif;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(201,162,74,.10), transparent 45%),
+      var(--bg);
+    color:var(--text);min-height:100%;direction:rtl;overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  img{max-width:100%;display:block;}
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-2);}
+  ::-webkit-scrollbar-thumb{background:var(--gold-deep);border-radius:10px;}
+  .hidden{display:none !important;}
+
+  #loading-overlay{
+    position:fixed;inset:0;z-index:9999;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  }
+  .spinner{width:56px;height:56px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:spin .9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loading-overlay p{color:var(--text-dim);font-size:14px;}
+
+  #toast-wrap{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:10px;width:min(92vw,420px);}
+  .toast{padding:14px 18px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:var(--shadow);border:1px solid var(--border);animation:toast-in .25s ease-out;}
+  @keyframes toast-in{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+  .toast.success{background:#132119;color:#bfe6cd;border-color:#2c5b3e;}
+  .toast.error{background:#221312;color:#f1c2ba;border-color:#6b332a;}
+
+  #denied-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;}
+  .denied-box{background:var(--panel);border:1px solid var(--danger);border-radius:18px;padding:40px 32px;max-width:420px;}
+  .denied-box .ic{font-size:44px;margin-bottom:14px;}
+  .denied-box h2{color:#f1c2ba;font-size:19px;margin-bottom:8px;}
+  .denied-box p{color:var(--text-dim);font-size:13.5px;}
+
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:32px;box-shadow:var(--shadow);}
+  .login-card h1{color:var(--gold-light);font-size:20px;margin-bottom:4px;text-align:center;}
+  .login-card span{display:block;text-align:center;color:var(--text-dim);font-size:12.5px;margin-bottom:20px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
+  .field input, .field select, .field textarea{
+    width:100%;padding:11px 13px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);
+    color:var(--text);font-size:14px;outline:none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--gold);}
+  .btn-primary{width:100%;padding:12px 0;border-radius:11px;background:linear-gradient(135deg,var(--gold-light),var(--gold) 55%,var(--gold-deep));color:#191307;font-weight:800;font-size:14.5px;}
+  .btn-primary:disabled{opacity:.6;}
+
+  #app-screen{min-height:100vh;display:flex;}
+  .sidebar{
+    width:250px;flex-shrink:0;background:linear-gradient(180deg,var(--panel),var(--bg-2));
+    border-left:1px solid var(--border);display:flex;flex-direction:column;
+    position:fixed;top:0;right:0;bottom:0;z-index:200;transition:transform .25s ease;
+  }
+  .sidebar-brand{display:flex;align-items:center;gap:10px;padding:22px 20px;border-bottom:1px solid var(--border);}
+  .sidebar-brand img{width:38px;height:38px;border-radius:9px;object-fit:contain;}
+  .brand-fallback{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--gold-light),var(--gold-deep));color:#171208;font-weight:800;}
+  .sidebar-brand strong{color:var(--gold-light);font-size:15.5px;display:block;}
+  .sidebar-brand small{color:var(--text-dim);font-size:11px;}
+  .nav-list{list-style:none;padding:14px 12px;flex:1;overflow-y:auto;}
+  .nav-list li{margin-bottom:5px;}
+  .nav-list button{width:100%;text-align:right;padding:12px 14px;border-radius:10px;background:transparent;color:var(--text-dim);font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .nav-list button:hover{background:var(--panel-2);color:var(--text);}
+  .nav-list button.active{background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#181206;}
+  .sidebar-foot{padding:14px;border-top:1px solid var(--border);}
+  .logout-btn{width:100%;padding:11px 0;border-radius:10px;background:transparent;border:1px solid var(--danger);color:#f1c2ba;font-weight:700;font-size:13.5px;}
+  .logout-btn:hover{background:rgba(200,92,74,.12);}
+
+  .main-area{margin-right:250px;flex:1;min-height:100vh;display:flex;flex-direction:column;}
+  .topbar{display:none;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);background:var(--bg-2);position:sticky;top:0;z-index:150;}
+  .burger{width:42px;height:42px;border-radius:10px;background:var(--panel);border:1px solid var(--border);color:var(--gold);font-size:19px;}
+  .topbar strong{color:var(--gold-light);font-size:15px;}
+  .content{padding:32px;flex:1;}
+  .section{display:none;animation:fade .3s ease;}
+  .section.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .page-title{font-size:23px;font-weight:800;color:var(--gold-light);margin-bottom:4px;}
+  .page-sub{color:var(--text-dim);font-size:13.5px;margin-bottom:24px;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:10px;}
+  .stat-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;}
+  .stat-card .num{font-size:26px;font-weight:800;color:var(--gold-light);}
+  .stat-card .label{color:var(--text-dim);font-size:13px;margin-top:4px;}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px;}
+  .panel h3{color:var(--gold-light);font-size:16px;margin-bottom:16px;}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px;}
+  .btn-gold{padding:11px 22px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#181206;font-weight:800;font-size:13.5px;}
+  .btn-gold:disabled{opacity:.6;}
+  .btn-outline{padding:9px 16px;border-radius:9px;background:transparent;border:1px solid var(--border);color:var(--text);font-weight:700;font-size:12.5px;}
+  .btn-outline:hover{border-color:var(--gold);}
+  .btn-danger{padding:9px 16px;border-radius:9px;background:transparent;border:1px solid var(--danger);color:#f1c2ba;font-weight:700;font-size:12.5px;}
+  .btn-danger:hover{background:rgba(200,92,74,.12);}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{text-align:right;color:var(--text-dim);font-weight:700;padding:10px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  tbody td{padding:12px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:hover{background:var(--panel-2);}
+  .table-wrap{overflow-x:auto;}
+  .actions-cell{display:flex;gap:8px;flex-wrap:wrap;}
+  .badge{display:inline-block;padding:4px 10px;border-radius:999px;background:var(--panel-2);border:1px solid var(--border);font-size:11.5px;color:var(--gold-light);font-weight:700;}
+  .empty-row td{text-align:center;color:var(--text-dim);padding:30px;}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(4,3,1,.72);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .modal{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;box-shadow:var(--shadow);}
+  .modal h3{color:var(--gold-light);margin-bottom:14px;font-size:16.5px;}
+  .modal p{color:var(--text-dim);font-size:13.5px;margin-bottom:14px;line-height:1.7;}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .btn-secondary{flex:1;padding:11px 0;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);color:var(--text);font-weight:700;font-size:13.5px;}
+
+  @media(max-width:900px){
+    .sidebar{transform:translateX(100%);}
+    .sidebar.open{transform:translateX(0);}
+    .main-area{margin-right:0;}
+    .topbar{display:flex;}
+    .content{padding:18px 14px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p>جاري التحميل...</p>
+</div>
+<div id="toast-wrap"></div>
+
+<div id="login-screen" class="hidden">
+  <div class="login-card">
+    <h1>لوحة تحكم الأدمن</h1>
+    <span>منصة المحمدي</span>
+    <form onsubmit="return handleAdminLogin(event)">
+      <div class="field">
+        <label>البريد الإلكتروني</label>
+        <input type="email" id="admin-email" required placeholder="mohamed@gmail.com">
+      </div>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="admin-password" required placeholder="••••••••">
+      </div>
+      <button class="btn-primary" id="admin-login-btn" type="submit">تسجيل الدخول</button>
+    </form>
+  </div>
+</div>
+
+<div id="denied-screen" class="hidden">
+  <div class="denied-box">
+    <div class="ic">🚫</div>
+    <h2>غير مصرح لك بالدخول</h2>
+    <p>هذا الحساب لا يملك صلاحية الوصول إلى لوحة تحكم الأدمن. سيتم تحويلك لصفحة تسجيل الدخول...</p>
+  </div>
+</div>
+
+<div id="app-screen" class="hidden">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <img src="logo.png" alt="شعار" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="brand-fallback" style="display:none;">م</div>
+      <div><strong>المحمدي</strong><small>لوحة تحكم الأدمن</small></div>
+    </div>
+    <ul class="nav-list">
+      <li><button class="nav-btn active" data-section="home">🏠 الرئيسية</button></li>
+      <li><button class="nav-btn" data-section="users">👥 المستخدمين</button></li>
+      <li><button class="nav-btn" data-section="summaries">📚 الملخصات</button></li>
+      <li><button class="nav-btn" data-section="evaluations">📝 التقييمات</button></li>
+      <li><button class="nav-btn" data-section="video">🎬 آخر فيديو</button></li>
+      <li><button class="nav-btn" data-section="products">🛍️ المنتجات</button></li>
+      <li><button class="nav-btn" data-section="about">ℹ️ شرح المنصة</button></li>
+    </ul>
+    <div class="sidebar-foot">
+      <button class="logout-btn" onclick="handleAdminLogout()">تسجيل الخروج</button>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <div class="topbar">
+      <button class="burger" onclick="toggleSidebar()">☰</button>
+      <strong>لوحة تحكم الأدمن</strong>
+      <div style="width:42px;"></div>
+    </div>
+
+    <div class="content">
+
+      <section class="section active" id="section-home">
+        <div class="page-title">نظرة عامة</div>
+        <div class="page-sub">ملخص سريع عن بيانات المنصة</div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="num" id="stat-users">-</div><div class="label">عدد المستخدمين</div></div>
+          <div class="stat-card"><div class="num" id="stat-summaries">-</div><div class="label">عدد الملخصات</div></div>
+          <div class="stat-card"><div class="num" id="stat-evaluations">-</div><div class="label">عدد التقييمات</div></div>
+          <div class="stat-card"><div class="num" id="stat-products">-</div><div class="label">عدد المنتجات</div></div>
+        </div>
+      </section>
+
+      <section class="section" id="section-users">
+        <div class="page-title">المستخدمين</div>
+        <div class="page-sub">إدارة بيانات المستخدمين المسجلين في المنصة</div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>التخصص</th><th>تاريخ التسجيل</th><th>إجراء</th></tr></thead>
+              <tbody id="users-table-body"><tr class="empty-row"><td colspan="6">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="section-summaries">
+        <div class="page-title">إدارة الملخصات</div>
+        <div class="page-sub">إضافة وتعديل وحذف ملخصات المواد</div>
+        <div class="panel">
+          <h3 id="summary-form-title">إضافة ملخص جديد</h3>
+          <input type="hidden" id="summary-edit-id">
+          <div class="form-grid">
+            <div class="field"><label>اسم الملخص</label><input type="text" id="summary-name" placeholder="مثال: ملخص الوحدة الأولى"></div>
+            <div class="field">
+              <label>المادة</label>
+              <select id="summary-subject">
+                <option value="العربي">العربي</option>
+                <option value="التاريخ">التاريخ</option>
+                <option value="الإنجليزي">الإنجليزي</option>
+                <option value="البرمجة">البرمجة</option>
+                <option value="الكيمياء">الكيمياء</option>
+                <option value="الفيزياء">الفيزياء</option>
+                <option value="الرياضيات">الرياضيات</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>النوع</label>
+              <select id="summary-type">
+                <option value="مادة أساسية">مادة أساسية</option>
+                <option value="مادة تخصص">مادة تخصص</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>التخصص (في حالة مادة التخصص فقط)</label>
+              <select id="summary-specialization">
+                <option value="">— لا ينطبق (مادة أساسية) —</option>
+                <option value="البرمجة">البرمجة</option>
+                <option value="الكيمياء">الكيمياء</option>
+                <option value="الفيزياء">الفيزياء</option>
+                <option value="الرياضيات">الرياضيات</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column:1/-1;"><label>رابط Google Drive</label><input type="url" id="summary-link" placeholder="https://drive.google.com/..."></div>
+          </div>
+          <button class="btn-gold" id="summary-submit-btn" onclick="submitSummary()">إضافة</button>
+          <button class="btn-outline hidden" id="summary-cancel-btn" onclick="cancelSummaryEdit()" style="margin-right:8px;">إلغاء التعديل</button>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>الاسم</th><th>المادة</th><th>النوع</th><th>التخصص</th><th>إجراء</th></tr></thead>
+              <tbody id="summaries-table-body"><tr class="empty-row"><td colspan="5">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="section-evaluations">
+        <div class="page-title">إدارة التقييمات</div>
+        <div class="page-sub">إضافة وتعديل وحذف تقييمات الوزارة الأسبوعية</div>
+        <div class="panel">
+          <h3 id="eval-form-title">إضافة تقييم جديد</h3>
+          <input type="hidden" id="eval-edit-id">
+          <div class="form-grid">
+            <div class="field"><label>اسم التقييم</label><input type="text" id="eval-name" placeholder="مثال: تقييم الأسبوع الأول"></div>
+            <div class="field">
+              <label>المادة</label>
+              <select id="eval-subject">
+                <option value="العربي">العربي</option>
+                <option value="التاريخ">التاريخ</option>
+                <option value="الإنجليزي">الإنجليزي</option>
+                <option value="البرمجة">البرمجة</option>
+                <option value="الكيمياء">الكيمياء</option>
+                <option value="الفيزياء">الفيزياء</option>
+                <option value="الرياضيات">الرياضيات</option>
+              </select>
+            </div>
+            <div class="field"><label>الأسبوع</label><input type="text" id="eval-week" placeholder="مثال: الأسبوع 3"></div>
+            <div class="field">
+              <label>التخصص (في حالة مادة التخصص فقط)</label>
+              <select id="eval-specialization">
+                <option value="">— لا ينطبق (مادة أساسية) —</option>
+                <option value="البرمجة">البرمجة</option>
+                <option value="الكيمياء">الكيمياء</option>
+                <option value="الفيزياء">الفيزياء</option>
+                <option value="الرياضيات">الرياضيات</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column:1/-1;"><label>الرابط (PDF أو رابط خارجي)</label><input type="url" id="eval-link" placeholder="https://..."></div>
+          </div>
+          <button class="btn-gold" id="eval-submit-btn" onclick="submitEvaluation()">إضافة</button>
+          <button class="btn-outline hidden" id="eval-cancel-btn" onclick="cancelEvalEdit()" style="margin-right:8px;">إلغاء التعديل</button>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>الاسم</th><th>المادة</th><th>الأسبوع</th><th>التخصص</th><th>إجراء</th></tr></thead>
+              <tbody id="evaluations-table-body"><tr class="empty-row"><td colspan="5">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="section-video">
+        <div class="page-title">آخر فيديو</div>
+        <div class="page-sub">رابط فيديو يوتيوب يظهر للطلاب في الصفحة الرئيسية</div>
+        <div class="panel">
+          <div class="field"><label>رابط فيديو YouTube</label><input type="url" id="last-video-url" placeholder="https://www.youtube.com/watch?v=..."></div>
+          <button class="btn-gold" onclick="saveSetting('lastVideo','last-video-url')">حفظ الرابط</button>
+        </div>
+      </section>
+
+      <section class="section" id="section-products">
+        <div class="page-title">إدارة المنتجات</div>
+        <div class="page-sub">إضافة وتعديل وحذف منتجات المنصة</div>
+        <div class="panel">
+          <h3 id="product-form-title">إضافة منتج جديد</h3>
+          <input type="hidden" id="product-edit-id">
+          <div class="form-grid">
+            <div class="field"><label>اسم المنتج</label><input type="text" id="product-name" placeholder="اسم المنتج"></div>
+            <div class="field"><label>السعر</label><input type="text" id="product-price" placeholder="مثال: 150 جنيه"></div>
+            <div class="field"><label>رابط صورة المنتج</label><input type="url" id="product-image" placeholder="https://..."></div>
+            <div class="field"><label>رقم واتساب أو رابط واتساب</label><input type="text" id="product-whatsapp" placeholder="2010xxxxxxxx أو رابط wa.me"></div>
+            <div class="field" style="grid-column:1/-1;"><label>وصف مختصر</label><textarea id="product-description" rows="2" placeholder="وصف المنتج"></textarea></div>
+          </div>
+          <button class="btn-gold" id="product-submit-btn" onclick="submitProduct()">إضافة</button>
+          <button class="btn-outline hidden" id="product-cancel-btn" onclick="cancelProductEdit()" style="margin-right:8px;">إلغاء التعديل</button>
+        </div>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>الصورة</th><th>الاسم</th><th>السعر</th><th>إجراء</th></tr></thead>
+              <tbody id="products-table-body"><tr class="empty-row"><td colspan="4">جاري التحميل...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="section-about">
+        <div class="page-title">فيديو شرح المنصة</div>
+        <div class="page-sub">رابط فيديو يوتيوب يظهر في قسم "شرح المنصة"</div>
+        <div class="panel">
+          <div class="field"><label>رابط فيديو YouTube</label><input type="url" id="about-video-url" placeholder="https://www.youtube.com/watch?v=..."></div>
+          <button class="btn-gold" onclick="saveSetting('aboutVideo','about-video-url')">حفظ الرابط</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div id="confirm-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3>تأكيد الحذف</h3>
+    <p id="confirm-text">هل أنت متأكد من رغبتك في الحذف؟ لا يمكن التراجع عن هذا الإجراء.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeConfirmModal()">إلغاء</button>
+      <button class="btn-gold" style="flex:1;background:linear-gradient(135deg,#e08a78,var(--danger));" id="confirm-delete-btn">حذف</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* =========================================================
+   إعدادات Firebase - يرجى استبدالها ببيانات مشروعك الخاص
+   (يجب أن تكون نفس بيانات ملف index.html)
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyByWbyb-XEi2w33LendZoOagNH7nRKEg6M",
+  authDomain: "almohamady-39699.firebaseapp.com",
+  projectId: "almohamady-39699",
+  storageBucket: "almohamady-39699.firebasestorage.app",
+  messagingSenderId: "608505996092",
+  appId: "1:608505996092:web:a4c0d0ccf75ad84158b439"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const ADMIN_EMAIL = "mohamed@gmail.com";
+
+function showLoading(show){ document.getElementById('loading-overlay').classList.toggle('hidden', !show); }
+function showToast(message, type){
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'success');
+  el.textContent = message;
+  wrap.appendChild(el);
+  setTimeout(()=> el.remove(), 3800);
+}
+function arabicAuthError(code){
+  const map = {
+    'auth/invalid-email':'صيغة البريد الإلكتروني غير صحيحة',
+    'auth/user-not-found':'لا يوجد حساب بهذا البريد الإلكتروني',
+    'auth/wrong-password':'كلمة المرور غير صحيحة',
+    'auth/invalid-credential':'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    'auth/too-many-requests':'عدد محاولات كبير، حاول لاحقًا',
+    'auth/network-request-failed':'يوجد مشكلة في الاتصال بالإنترنت'
+  };
+  return map[code] || 'حدث خطأ غير متوقع، حاول مرة أخرى';
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : str;
+  return d.innerHTML;
+}
+function showScreen(name){
+  ['login-screen','denied-screen','app-screen'].forEach(id=>{
+    document.getElementById(id).classList.toggle('hidden', id!==name);
+  });
+}
+
+function handleAdminLogin(e){
+  e.preventDefault();
+  const email = document.getElementById('admin-email').value.trim();
+  const password = document.getElementById('admin-password').value;
+  const btn = document.getElementById('admin-login-btn');
+  btn.disabled = true; btn.textContent = 'جاري الدخول...';
+  auth.signInWithEmailAndPassword(email, password)
+    .catch(err=> showToast(arabicAuthError(err.code), 'error'))
+    .finally(()=>{ btn.disabled = false; btn.textContent = 'تسجيل الدخول'; });
+  return false;
+}
+function handleAdminLogout(){ auth.signOut(); }
+
+auth.onAuthStateChanged((user)=>{
+  if(user){
+    if(user.email !== ADMIN_EMAIL){
+      showLoading(false);
+      showScreen('denied-screen');
+      setTimeout(()=>{ auth.signOut(); }, 2200);
+      return;
+    }
+    showLoading(false);
+    showScreen('app-screen');
+    initDashboard();
+  } else {
+    showLoading(false);
+    showScreen('login-screen');
+  }
+});
+
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> goToSection(btn.dataset.section));
+});
+function goToSection(name){
+  document.querySelectorAll('.nav-btn').forEach(b=> b.classList.toggle('active', b.dataset.section===name));
+  document.querySelectorAll('.section').forEach(s=> s.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+function openConfirmModal(text, onConfirm){
+  document.getElementById('confirm-text').textContent = text;
+  document.getElementById('confirm-modal').classList.remove('hidden');
+  const btn = document.getElementById('confirm-delete-btn');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', ()=>{
+    onConfirm();
+    closeConfirmModal();
+  });
+}
+function closeConfirmModal(){ document.getElementById('confirm-modal').classList.add('hidden'); }
+
+function initDashboard(){
+  loadStats();
+  loadUsers();
+  loadSummaries();
+  loadEvaluations();
+  loadProducts();
+  loadSettingsForm('lastVideo','last-video-url');
+  loadSettingsForm('aboutVideo','about-video-url');
+}
+
+function loadStats(){
+  db.collection('users').get().then(s=> document.getElementById('stat-users').textContent = s.size);
+  db.collection('summaries').get().then(s=> document.getElementById('stat-summaries').textContent = s.size);
+  db.collection('evaluations').get().then(s=> document.getElementById('stat-evaluations').textContent = s.size);
+  db.collection('products').get().then(s=> document.getElementById('stat-products').textContent = s.size);
+}
+
+function formatDate(ts){
+  if(!ts) return '-';
+  try{
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleDateString('ar-EG', { year:'numeric', month:'long', day:'numeric' });
+  }catch(e){ return '-'; }
+}
+
+function loadUsers(){
+  const body = document.getElementById('users-table-body');
+  db.collection('users').get().then(snap=>{
+    if(snap.empty){
+      body.innerHTML = '<tr class="empty-row"><td colspan="6">لا يوجد مستخدمون بعد</td></tr>';
+      return;
+    }
+    body.innerHTML = '';
+    snap.forEach(doc=>{
+      const u = doc.data();
+      const isAdmin = u.email === ADMIN_EMAIL;
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${escapeHtml(u.name)}</td>
+        <td>${escapeHtml(u.phone)}</td>
+        <td>${escapeHtml(u.email)}</td>
+        <td><span class="badge">${escapeHtml(u.specialization)}</span></td>
+        <td>${formatDate(u.createdAt)}</td>
+        <td>${isAdmin ? '<span class="badge">الأدمن</span>' : `<button class="btn-danger" data-id="${doc.id}">حذف</button>`}</td>`;
+      if(!isAdmin){
+        row.querySelector('.btn-danger').addEventListener('click', ()=>{
+          openConfirmModal(`سيتم حذف بيانات المستخدم "${u.name}" من قاعدة البيانات نهائيًا.`, ()=>{
+            db.collection('users').doc(doc.id).delete()
+              .then(()=>{ showToast('تم حذف المستخدم بنجاح', 'success'); loadUsers(); loadStats(); })
+              .catch(()=> showToast('تعذر حذف المستخدم', 'error'));
+          });
+        });
+      }
+      body.appendChild(row);
+    });
+  }).catch(()=>{ body.innerHTML = '<tr class="empty-row"><td colspan="6">تعذر تحميل المستخدمين</td></tr>'; });
+}
+
+function resolveSpecField(typeVal, specVal){
+  return typeVal === 'مادة تخصص' ? specVal : '';
+}
+function submitSummary(){
+  const editId = document.getElementById('summary-edit-id').value;
+  const name = document.getElementById('summary-name').value.trim();
+  const subject = document.getElementById('summary-subject').value;
+  const type = document.getElementById('summary-type').value;
+  const specialization = resolveSpecField(type, document.getElementById('summary-specialization').value);
+  const link = document.getElementById('summary-link').value.trim();
+
+  if(!name || !link){ showToast('يرجى تعبئة اسم الملخص والرابط', 'error'); return; }
+  if(type === 'مادة تخصص' && !specialization){ showToast('يرجى اختيار التخصص', 'error'); return; }
+
+  const data = { name, subject, type, specialization, link };
+  const btn = document.getElementById('summary-submit-btn');
+  btn.disabled = true;
+
+  const promise = editId
+    ? db.collection('summaries').doc(editId).update(data)
+    : db.collection('summaries').doc().set(Object.assign({}, data, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+
+  promise.then(()=>{
+    showToast(editId ? 'تم تعديل الملخص بنجاح' : 'تم إضافة الملخص بنجاح', 'success');
+    cancelSummaryEdit();
+    loadSummaries();
+    loadStats();
+  }).catch(()=> showToast('حدث خطأ أثناء الحفظ', 'error'))
+    .finally(()=>{ btn.disabled = false; });
+}
+function cancelSummaryEdit(){
+  document.getElementById('summary-edit-id').value = '';
+  document.getElementById('summary-name').value = '';
+  document.getElementById('summary-link').value = '';
+  document.getElementById('summary-subject').selectedIndex = 0;
+  document.getElementById('summary-type').selectedIndex = 0;
+  document.getElementById('summary-specialization').selectedIndex = 0;
+  document.getElementById('summary-form-title').textContent = 'إضافة ملخص جديد';
+  document.getElementById('summary-submit-btn').textContent = 'إضافة';
+  document.getElementById('summary-cancel-btn').classList.add('hidden');
+}
+function editSummary(id, data){
+  document.getElementById('summary-edit-id').value = id;
+  document.getElementById('summary-name').value = data.name || '';
+  document.getElementById('summary-subject').value = data.subject || 'العربي';
+  document.getElementById('summary-type').value = data.type || 'مادة أساسية';
+  document.getElementById('summary-specialization').value = data.specialization || '';
+  document.getElementById('summary-link').value = data.link || '';
+  document.getElementById('summary-form-title').textContent = 'تعديل الملخص';
+  document.getElementById('summary-submit-btn').textContent = 'حفظ التعديلات';
+  document.getElementById('summary-cancel-btn').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function loadSummaries(){
+  const body = document.getElementById('summaries-table-body');
+  db.collection('summaries').get().then(snap=>{
+    if(snap.empty){ body.innerHTML = '<tr class="empty-row"><td colspan="5">لا توجد ملخصات بعد</td></tr>'; return; }
+    body.innerHTML = '';
+    const docs = [];
+    snap.forEach(doc=> docs.push(doc));
+    docs.sort((a,b)=>{
+      const at = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+      const bt = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+      return bt - at;
+    });
+    docs.forEach(doc=>{
+      const d = doc.data();
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${escapeHtml(d.name)}</td>
+        <td>${escapeHtml(d.subject)}</td>
+        <td>${escapeHtml(d.type)}</td>
+        <td>${escapeHtml(d.specialization || '—')}</td>
+        <td class="actions-cell">
+          <button class="btn-outline edit-btn">تعديل</button>
+          <button class="btn-danger del-btn">حذف</button>
+        </td>`;
+      row.querySelector('.edit-btn').addEventListener('click', ()=> editSummary(doc.id, d));
+      row.querySelector('.del-btn').addEventListener('click', ()=>{
+        openConfirmModal(`سيتم حذف الملخص "${d.name}" نهائيًا.`, ()=>{
+          db.collection('summaries').doc(doc.id).delete()
+            .then(()=>{ showToast('تم حذف الملخص بنجاح', 'success'); loadSummaries(); loadStats(); })
+            .catch(()=> showToast('تعذر حذف الملخص', 'error'));
+        });
+      });
+      body.appendChild(row);
+    });
+  }).catch(()=>{ body.innerHTML = '<tr class="empty-row"><td colspan="5">تعذر تحميل الملخصات</td></tr>'; });
+}
+
+function submitEvaluation(){
+  const editId = document.getElementById('eval-edit-id').value;
+  const name = document.getElementById('eval-name').value.trim();
+  const subject = document.getElementById('eval-subject').value;
+  const week = document.getElementById('eval-week').value.trim();
+  const specialization = document.getElementById('eval-specialization').value;
+  const link = document.getElementById('eval-link').value.trim();
+
+  if(!name || !link){ showToast('يرجى تعبئة اسم التقييم والرابط', 'error'); return; }
+
+  const data = { name, subject, week, specialization, link };
+  const btn = document.getElementById('eval-submit-btn');
+  btn.disabled = true;
+
+  const promise = editId
+    ? db.collection('evaluations').doc(editId).update(data)
+    : db.collection('evaluations').doc().set(Object.assign({}, data, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+
+  promise.then(()=>{
+    showToast(editId ? 'تم تعديل التقييم بنجاح' : 'تم إضافة التقييم بنجاح', 'success');
+    cancelEvalEdit();
+    loadEvaluations();
+    loadStats();
+  }).catch(()=> showToast('حدث خطأ أثناء الحفظ', 'error'))
+    .finally(()=>{ btn.disabled = false; });
+}
+function cancelEvalEdit(){
+  document.getElementById('eval-edit-id').value = '';
+  document.getElementById('eval-name').value = '';
+  document.getElementById('eval-week').value = '';
+  document.getElementById('eval-link').value = '';
+  document.getElementById('eval-subject').selectedIndex = 0;
+  document.getElementById('eval-specialization').selectedIndex = 0;
+  document.getElementById('eval-form-title').textContent = 'إضافة تقييم جديد';
+  document.getElementById('eval-submit-btn').textContent = 'إضافة';
+  document.getElementById('eval-cancel-btn').classList.add('hidden');
+}
+function editEvaluation(id, data){
+  document.getElementById('eval-edit-id').value = id;
+  document.getElementById('eval-name').value = data.name || '';
+  document.getElementById('eval-subject').value = data.subject || 'العربي';
+  document.getElementById('eval-week').value = data.week || '';
+  document.getElementById('eval-specialization').value = data.specialization || '';
+  document.getElementById('eval-link').value = data.link || '';
+  document.getElementById('eval-form-title').textContent = 'تعديل التقييم';
+  document.getElementById('eval-submit-btn').textContent = 'حفظ التعديلات';
+  document.getElementById('eval-cancel-btn').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function loadEvaluations(){
+  const body = document.getElementById('evaluations-table-body');
+  db.collection('evaluations').get().then(snap=>{
+    if(snap.empty){ body.innerHTML = '<tr class="empty-row"><td colspan="5">لا توجد تقييمات بعد</td></tr>'; return; }
+    body.innerHTML = '';
+    const docs = [];
+    snap.forEach(doc=> docs.push(doc));
+    docs.sort((a,b)=>{
+      const at = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+      const bt = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+      return bt - at;
+    });
+    docs.forEach(doc=>{
+      const d = doc.data();
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${escapeHtml(d.name)}</td>
+        <td>${escapeHtml(d.subject)}</td>
+        <td>${escapeHtml(d.week || '—')}</td>
+        <td>${escapeHtml(d.specialization || '—')}</td>
+        <td class="actions-cell">
+          <button class="btn-outline edit-btn">تعديل</button>
+          <button class="btn-danger del-btn">حذف</button>
+        </td>`;
+      row.querySelector('.edit-btn').addEventListener('click', ()=> editEvaluation(doc.id, d));
+      row.querySelector('.del-btn').addEventListener('click', ()=>{
+        openConfirmModal(`سيتم حذف التقييم "${d.name}" نهائيًا.`, ()=>{
+          db.collection('evaluations').doc(doc.id).delete()
+            .then(()=>{ showToast('تم حذف التقييم بنجاح', 'success'); loadEvaluations(); loadStats(); })
+            .catch(()=> showToast('تعذر حذف التقييم', 'error'));
+        });
+      });
+      body.appendChild(row);
+    });
+  }).catch(()=>{ body.innerHTML = '<tr class="empty-row"><td colspan="5">تعذر تحميل التقييمات</td></tr>'; });
+}
+
+function submitProduct(){
+  const editId = document.getElementById('product-edit-id').value;
+  const name = document.getElementById('product-name').value.trim();
+  const price = document.getElementById('product-price').value.trim();
+  const image = document.getElementById('product-image').value.trim();
+  const whatsapp = document.getElementById('product-whatsapp').value.trim();
+  const description = document.getElementById('product-description').value.trim();
+
+  if(!name || !price){ showToast('يرجى تعبئة اسم المنتج والسعر', 'error'); return; }
+
+  const data = { name, price, image, whatsapp, description };
+  const btn = document.getElementById('product-submit-btn');
+  btn.disabled = true;
+
+  const promise = editId
+    ? db.collection('products').doc(editId).update(data)
+    : db.collection('products').doc().set(Object.assign({}, data, { createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+
+  promise.then(()=>{
+    showToast(editId ? 'تم تعديل المنتج بنجاح' : 'تم إضافة المنتج بنجاح', 'success');
+    cancelProductEdit();
+    loadProducts();
+    loadStats();
+  }).catch(()=> showToast('حدث خطأ أثناء الحفظ', 'error'))
+    .finally(()=>{ btn.disabled = false; });
+}
+function cancelProductEdit(){
+  document.getElementById('product-edit-id').value = '';
+  document.getElementById('product-name').value = '';
+  document.getElementById('product-price').value = '';
+  document.getElementById('product-image').value = '';
+  document.getElementById('product-whatsapp').value = '';
+  document.getElementById('product-description').value = '';
+  document.getElementById('product-form-title').textContent = 'إضافة منتج جديد';
+  document.getElementById('product-submit-btn').textContent = 'إضافة';
+  document.getElementById('product-cancel-btn').classList.add('hidden');
+}
+function editProduct(id, data){
+  document.getElementById('product-edit-id').value = id;
+  document.getElementById('product-name').value = data.name || '';
+  document.getElementById('product-price').value = data.price || '';
+  document.getElementById('product-image').value = data.image || '';
+  document.getElementById('product-whatsapp').value = data.whatsapp || '';
+  document.getElementById('product-description').value = data.description || '';
+  document.getElementById('product-form-title').textContent = 'تعديل المنتج';
+  document.getElementById('product-submit-btn').textContent = 'حفظ التعديلات';
+  document.getElementById('product-cancel-btn').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function loadProducts(){
+  const body = document.getElementById('products-table-body');
+  db.collection('products').get().then(snap=>{
+    if(snap.empty){ body.innerHTML = '<tr class="empty-row"><td colspan="4">لا توجد منتجات بعد</td></tr>'; return; }
+    body.innerHTML = '';
+    snap.forEach(doc=>{
+      const d = doc.data();
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><img src="${d.image||''}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;" onerror="this.style.opacity=0;"></td>
+        <td>${escapeHtml(d.name)}</td>
+        <td>${escapeHtml(d.price)}</td>
+        <td class="actions-cell">
+          <button class="btn-outline edit-btn">تعديل</button>
+          <button class="btn-danger del-btn">حذف</button>
+        </td>`;
+      row.querySelector('.edit-btn').addEventListener('click', ()=> editProduct(doc.id, d));
+      row.querySelector('.del-btn').addEventListener('click', ()=>{
+        openConfirmModal(`سيتم حذف المنتج "${d.name}" نهائيًا.`, ()=>{
+          db.collection('products').doc(doc.id).delete()
+            .then(()=>{ showToast('تم حذف المنتج بنجاح', 'success'); loadProducts(); loadStats(); })
+            .catch(()=> showToast('تعذر حذف المنتج', 'error'));
+        });
+      });
+      body.appendChild(row);
+    });
+  }).catch(()=>{ body.innerHTML = '<tr class="empty-row"><td colspan="4">تعذر تحميل المنتجات</td></tr>'; });
+}
+
+function loadSettingsForm(docId, inputId){
+  db.collection('settings').doc(docId).get().then(doc=>{
+    if(doc.exists){ document.getElementById(inputId).value = doc.data().url || ''; }
+  }).catch(()=>{});
+}
+function saveSetting(docId, inputId){
+  const url = document.getElementById(inputId).value.trim();
+  if(!url){ showToast('يرجى إدخال رابط صحيح', 'error'); return; }
+  db.collection('settings').doc(docId).set({ url: url }, { merge:true })
+    .then(()=> showToast('تم حفظ الرابط بنجاح', 'success'))
+    .catch(()=> showToast('تعذر حفظ الرابط', 'error'));
+}
+
+window.addEventListener('error', function(){ return true; });
+</script>
+</body>
+</html>
